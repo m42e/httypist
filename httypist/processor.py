@@ -5,6 +5,9 @@ import tempfile
 import subprocess
 import celery
 import shutil
+from celery.utils.log import get_task_logger
+
+logger = get_task_logger(__name__)
 
 app = celery.Celery(
     "template_processor", broker=os.getenv("REDIS_URL", "redis://localhost")
@@ -28,7 +31,8 @@ def process_string(string, data):
 
 @app.task
 def process_template(template, data):
-    _, _, files = next(os.walk(template["path"]))
+    root, _, files = next(os.walk(template["path"]))
+    logger.info(f'Search files in {root}')
     templatefiles, otherfiles = [], []
     for x in files:
         templatefiles.append(x) if x.endswith(".jinja") else otherfiles.append(x)
@@ -40,6 +44,7 @@ def process_template(template, data):
         )
     loader = jinja2.FileSystemLoader(template["path"], followlinks=True)
     for f in templatefiles:
+        logger.info(f'process {f}')
         fname, ending = get_filename_infos(f)
         options = get_filetype_template_options(ending, template["config"])
         env = jinja2.Environment(loader=loader, **options)
@@ -48,20 +53,23 @@ def process_template(template, data):
             fout.write(t.render(**data))
 
     if "post" in template["config"]:
+        logger.info(f'process post step')
+        output = 'failed before calling process'
         try:
-            output = 'failed before calling process'
             for name, command in template["config"]["post"].items():
-                print(" ".join(command))
+                logger.info(" ".join(command))
                 output = subprocess.run(
                     command, cwd=tempdir.name, check=True, capture_output=True
                 )
         finally:
-            print(output)
+            logger.error(output)
 
     if "callback" in template["config"]:
+        logger.error('preparing callback')
         cb = template["config"]["callback"]
         env = jinja2.Environment(loader=loader)
         url = env.from_string(cb["template"]).render(**data)
+        logger.info(f'url for callback {url}')
         postfiles = {}
         for sendfile in cb["data"]:
             if sendfile["binary"]:
@@ -76,7 +84,9 @@ def process_template(template, data):
         }
         if 'headers' in cb:
             headers.update(cb['headers'])
-        requests.request(cb["method"], url, files=postfiles, headers=headers)
+        result = requests.request(cb["method"], url, files=postfiles, headers=headers)
+        logger.info(f'callback result {result.status_code}')
+        logger.info(f'result callback {result.content}')
     if "output" in template["config"]:
         op = template["config"]["output"]
         for file in op["files"]:
