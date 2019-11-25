@@ -71,7 +71,7 @@ def process_template(template, data):
                 os.path.join(tempdir.name, sendfile["name"]), openbinary
             )
         headers = {
-            'processed': 1
+            'processed': '1'
         }
         if 'headers' in cb:
             headers.update(cb['headers'])
