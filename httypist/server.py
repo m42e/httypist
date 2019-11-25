@@ -7,7 +7,6 @@ import copy
 import pathlib
 import yaml
 from . import processor, repo
-from pprint import pprint
 
 app = flask.Flask(__name__)
 
@@ -63,6 +62,7 @@ def process_template(templatename):
     read_templates()
     template = available_templates[templatename]
     data = get_all_request_data()
+    app.logger.info(data['json'])
     processor.process_template.delay(template, data)
     return "1"
 
@@ -71,19 +71,18 @@ def process_template(templatename):
 def process_autotemplate():
     read_templates()
     data = get_all_request_data()
+    app.logger.info(data['json'])
     use_templates = []
     for name, template in available_templates.items():
-        print(name, end='')
+        app.logger.info(f"check process {name}")
         if 'selector' in template['config']:
             for selector in template['config']['selector']:
                 use = processor.process_string(f'{{{{ {selector} }}}}', data) == 'True'
+                app.logger.info(f"check => {use}")
                 if use:
                     use_templates.append(name)
-                else:
-                    print('- ', end= '')
-            print(' done')
         else:
-            print(' no selector')
+            app.logger.info('no selector')
     for template in use_templates:
         process_template(template)
     return '1'
@@ -118,10 +117,15 @@ def read_templates():
             template["config"].update(
                 yaml.load(open(path / "config.yml"), Loader=yaml.CLoader)
             )
-    pprint(available_templates)
+    app.logger.debug(available_templates)
 
 
 def main():
     repo.update()
     read_templates()
     app.run(debug=True)
+
+if __name__ != ‘__main__’:
+    gunicorn_logger = logging.getLogger(‘gunicorn.error’)
+    app.logger.handlers = gunicorn_logger.handlers
+    app.logger.setLevel(gunicorn_logger.level)
