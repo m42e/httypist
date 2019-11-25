@@ -70,9 +70,10 @@ def process_template(templatename):
 
 @app.route("/process")
 def process_autotemplate():
+    app.logger.info("autotemplate")
     read_templates()
     data = get_all_request_data()
-    app.logger.info(data['json'])
+    app.logger.info("json: {}".format(data['json']))
     use_templates = []
     for name, template in available_templates.items():
         app.logger.info(f"check process {name}")
