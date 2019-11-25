@@ -3,14 +3,14 @@ name: trigger-docker
 
 steps:
   - name: trigger  
-  image: plugins/downstream
-  settings:
-    server: https://drone.d1v3.de
-    token:
-      from_secret: drone_token
-    fork: true
-    repositories:
-      - matthias/httypist-docker
+    image: plugins/downstream
+    settings:
+      server: https://drone.d1v3.de
+      token:
+        from_secret: drone_token
+      fork: true
+      repositories:
+        - matthias/httypist-docker
 ---
 kind: secret
 name: drone_token
