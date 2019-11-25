@@ -49,6 +49,7 @@ def process_template(template, data):
 
     if "post" in template["config"]:
         try:
+            output = 'failed before calling process'
             for name, command in template["config"]["post"].items():
                 print(" ".join(command))
                 output = subprocess.run(
