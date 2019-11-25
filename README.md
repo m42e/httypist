@@ -1,5 +1,7 @@
 # Document automation
 
+This is still WIP
+
 ## Targets
 
 - HTTP Callbacks, 
@@ -14,7 +16,7 @@
 - Python flask http handler
 - Ninja2 Template engine
 - xelatex 
-- all runs in a docker container
+- all runs in docker containers
 
 
 ## Templates
@@ -22,6 +24,7 @@
 The templates are stored in a git repository.
 Each template has to be in a separate folder. All files, with the ending `.ninja` will be processed for the selected template.
 The template folder could have a separate file named `config.yml` which could set the options for the selection of this template and additional options passed to the processor
+
 
 ## Workflow
 
@@ -31,6 +34,7 @@ You start the docker container with a set of environment variables, such as:
 GIT_REPO=somehost:your/repo
 GIT_USERNAME=username
 GIT_SSH_KEY=ssh-rsa..........
+REDIS_URL=redis://localhost
 ```
 
 This will clone the git repository containing the templates and configuration. There will also be an url for updating the repository, so webhooks for the repository work fine.
