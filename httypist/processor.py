@@ -72,7 +72,12 @@ def process_template(template, data):
             postfiles[sendfile["name"]] = open(
                 os.path.join(tempdir.name, sendfile["name"]), openbinary
             )
-        requests.request(cb["method"], url, files=postfiles)
+        headers = {
+            'processed': 1
+        }
+        if 'headers' in cb:
+            headers.update(cb['headers'])
+        requests.request(cb["method"], url, files=postfiles, headers=headers)
     if "output" in template["config"]:
         op = template["config"]["output"]
         for file in op["files"]:
