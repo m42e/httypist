@@ -60,6 +60,7 @@ def get_all_request_data():
 
 @app.route("/process/<templatename>")
 def process_template(templatename):
+    read_templates()
     template = available_templates[templatename]
     data = get_all_request_data()
     processor.process_template.delay(template, data)
@@ -68,6 +69,7 @@ def process_template(templatename):
 
 @app.route("/process")
 def process_autotemplate():
+    read_templates()
     data = get_all_request_data()
     use_templates = []
     for name, template in available_templates.items():
@@ -89,6 +91,7 @@ def info():
 @app.route("/update")
 def update_repo():
     repo.update()
+    read_templates()
     return "1"
 
 
