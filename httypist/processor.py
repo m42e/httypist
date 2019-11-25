@@ -68,6 +68,7 @@ def process_template(template, data):
         logger.error('preparing callback')
         cb = template["config"]["callback"]
         env = jinja2.Environment(loader=loader)
+        logger.info(f'template url for callback {cb["template"]}')
         url = env.from_string(cb["template"]).render(**data)
         logger.info(f'url for callback {url}')
         postfiles = {}
@@ -80,10 +81,11 @@ def process_template(template, data):
                 os.path.join(tempdir.name, sendfile["name"]), openbinary
             )
         headers = {
-            'processed': '1'
+            'x-httypist-processed': '1'
         }
         if 'headers' in cb:
             headers.update(cb['headers'])
+        logger.info(f'callback headers {headers}')
         result = requests.request(cb["method"], url, files=postfiles, headers=headers)
         logger.info(f'callback result {result.status_code}')
         logger.info(f'result callback {result.content}')
