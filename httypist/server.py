@@ -65,7 +65,7 @@ def get_all_request_data():
     return data
 
 
-@app.route("/process/<templatename>")
+@app.route("/process/<templatename>", methods=['POST'])
 def process_template(templatename):
     read_templates()
     template = available_templates[templatename]
@@ -75,7 +75,7 @@ def process_template(templatename):
     return "1"
 
 
-@app.route("/process")
+@app.route("/process", methods=['POST'])
 def process_autotemplate():
     app.logger.info("autotemplate")
     read_templates()
