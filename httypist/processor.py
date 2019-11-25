@@ -55,8 +55,6 @@ def process_template(template, data):
                     command, cwd=tempdir.name, check=True, capture_output=True
                 )
         finally:
-            print(open(os.path.join(tempdir.name, "demo2.log")).read())
-            print(open(os.path.join(tempdir.name, "demo2.tex")).read())
             print(output)
 
     if "callback" in template["config"]:
