@@ -13,6 +13,13 @@ app = flask.Flask(__name__)
 
 available_templates = {}
 
+@app.before_first_request
+def setup_logging():
+    gunicorn_logger = logging.getLogger('gunicorn.error')
+    app.logger.handlers = gunicorn_logger.handlers
+    app.logger.setLevel(gunicorn_logger.level)
+    app.logger.addHandler(logging.StreamHandler())
+    app.logger.setLevel(logging.DEBUG)
 
 @app.route("/", methods=["POST"])
 def call():
@@ -127,7 +134,3 @@ def main():
     read_templates()
     app.run(debug=True)
 
-if __name__ != "__main__":
-    gunicorn_logger = logging.getLogger('gunicorn.error')
-    app.logger.handlers = gunicorn_logger.handlers
-    app.logger.setLevel(gunicorn_logger.level)
