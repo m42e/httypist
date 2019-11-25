@@ -78,7 +78,7 @@ def process_template(template, data):
             else:
                 openbinary = "r"
             postfiles[sendfile["name"]] = open(
-                os.path.join(tempdir.name, sendfile["name"]), openbinary
+                os.path.join(tempdir.name, sendfile["file"]), openbinary
             )
         headers = {
             'x-httypist-processed': '1'
