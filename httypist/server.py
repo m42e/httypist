@@ -6,6 +6,7 @@ import subprocess
 import copy
 import pathlib
 import yaml
+import gunicorn
 from . import processor, repo
 
 app = flask.Flask(__name__)
