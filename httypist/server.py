@@ -73,11 +73,17 @@ def process_autotemplate():
     data = get_all_request_data()
     use_templates = []
     for name, template in available_templates.items():
+        print(name, end='')
         if 'selector' in template['config']:
             for selector in template['config']['selector']:
                 use = processor.process_string(f'{{{{ {selector} }}}}', data) == 'True'
                 if use:
                     use_templates.append(name)
+                else:
+                    print('- ', end= '')
+            print(' done')
+        else:
+            print(' no selector')
     for template in use_templates:
         process_template(template)
     return '1'
