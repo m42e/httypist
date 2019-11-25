@@ -81,6 +81,10 @@ def process_autotemplate():
     return '1'
 
 
+@app.route("/info")
+def info():
+    return ', '.join(available_templates.keys())
+
 
 @app.route("/update")
 def update_repo():
