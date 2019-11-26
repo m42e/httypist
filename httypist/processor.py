@@ -39,8 +39,9 @@ def process_template(template, data):
 
     tempdir = tempfile.TemporaryDirectory()
     for file in otherfiles + folders:
+        logger.info(f'copy {file} to {tempdir.name}')
         shutil.copy(
-            os.path.join(template["path"], file), os.path.join(tempdir.name, file)
+            os.path.join(template["path"], file), tempdir.name
         )
     loader = jinja2.FileSystemLoader(template["path"], followlinks=True)
     for f in templatefiles:
