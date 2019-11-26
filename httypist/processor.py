@@ -31,14 +31,14 @@ def process_string(string, data):
 
 @app.task
 def process_template(template, data):
-    root, _, files = next(os.walk(template["path"]))
+    root, folders, files = next(os.walk(template["path"]))
     logger.info(f'Search files in {root}')
     templatefiles, otherfiles = [], []
     for x in files:
         templatefiles.append(x) if x.endswith(".jinja") else otherfiles.append(x)
 
     tempdir = tempfile.TemporaryDirectory()
-    for file in otherfiles:
+    for file in otherfiles + folders:
         shutil.copy(
             os.path.join(template["path"], file), os.path.join(tempdir.name, file)
         )
