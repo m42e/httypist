@@ -79,6 +79,12 @@ def process_template(template, data):
         url = env.from_string(cb["template"]).render(**data)
         logger.info(f'url for callback {url}')
         postfiles = {}
+        headers = {
+            'x-httypist-processed': '1'
+        }
+        if 'headers' in cb:
+            headers.update(cb['headers'])
+        logger.info(f'callback headers {headers}')
         for sendfile in cb["data"]:
             if sendfile["binary"]:
                 openbinary = "rb"
@@ -87,15 +93,9 @@ def process_template(template, data):
             postfiles[sendfile["name"]] = open(
                 os.path.join(tempdir.name, sendfile["file"]), openbinary
             )
-        headers = {
-            'x-httypist-processed': '1'
-        }
-        if 'headers' in cb:
-            headers.update(cb['headers'])
-        logger.info(f'callback headers {headers}')
-        result = requests.request(cb["method"], url, files=postfiles, headers=headers)
-        logger.info(f'callback result {result.status_code}')
-        logger.info(f'result callback {result.content}')
+            result = requests.request(cb["method"], url, files=postfiles, headers=headers)
+            logger.info(f'callback result {result.status_code}')
+            logger.info(f'result callback {result.content}')
     if "output" in template["config"]:
         op = template["config"]["output"]
         for file in op["files"]:
