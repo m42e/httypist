@@ -38,11 +38,17 @@ def process_template(template, data):
         templatefiles.append(x) if x.endswith(".jinja") else otherfiles.append(x)
 
     tempdir = tempfile.TemporaryDirectory()
-    for file in otherfiles + folders:
+    for file in otherfiles:
         logger.info(f'copy {file} to {tempdir.name}')
         shutil.copy(
             os.path.join(template["path"], file), tempdir.name
         )
+    for folder in folders:
+        logger.info(f'copy {file} to {tempdir.name}')
+        shutil.copytree(
+            os.path.join(template["path"], folder), os.path.join(tempdir.name, folder)
+        )
+        shutil.copytree
     loader = jinja2.FileSystemLoader(template["path"], followlinks=True)
     for f in templatefiles:
         logger.info(f'process {f}')
