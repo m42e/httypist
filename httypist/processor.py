@@ -3,6 +3,7 @@ import requests
 import os
 import tempfile
 import subprocess
+import importlib
 import celery
 import shutil
 from celery.utils.log import get_task_logger
@@ -71,6 +72,23 @@ def process_template(template, data):
         finally:
             logger.error(output)
 
+    if "execute" in template["config"]:
+        logger.info(f'try to execute specified functions')
+        original_pythonpath = sys.path
+        sys.path.append(template["path"])
+        for execute in template["config"]["execute"]:
+            logger.info(f'execute {execute}')
+            module, function = execute.split(':')
+            importlib.invalidate_caches()
+            mod = importlib.import_module(module)
+            importlib.reload(mod)
+            method_to_call = getattr(mod, function)
+            result = method_to_call(template, data, logger)
+            logger.info(f'execute result: {result}')
+
+        sys.path = original_pythonpath
+
+
     if "callback" in template["config"]:
         logger.error('preparing callback')
         cb = template["config"]["callback"]
@@ -96,6 +114,7 @@ def process_template(template, data):
             result = requests.request(cb["method"], url, files=postfiles, headers=headers)
             logger.info(f'callback result {result.status_code}')
             logger.info(f'result callback {result.content}')
+
     if "output" in template["config"]:
         op = template["config"]["output"]
         for file in op["files"]:
