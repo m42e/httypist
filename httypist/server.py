@@ -13,13 +13,15 @@ app = flask.Flask(__name__)
 
 available_templates = {}
 
+
 @app.before_first_request
 def setup_logging():
-    gunicorn_logger = logging.getLogger('gunicorn.error')
+    gunicorn_logger = logging.getLogger("gunicorn.error")
     app.logger.handlers = gunicorn_logger.handlers
     app.logger.setLevel(gunicorn_logger.level)
     app.logger.addHandler(logging.StreamHandler())
     app.logger.setLevel(logging.DEBUG)
+
 
 @app.route("/", methods=["POST"])
 def call():
@@ -34,24 +36,33 @@ def call():
         if file.name == mainfile:
             latexfiles.append(file.name)
 
+    if len(latexfiles) == 0:
+        flask.abort(400)
+
     logname = os.path.join(tempdir.name, "log.txt")
     with open(logname, "wb+") as logfile:
         logfile.write(tempdir.name.encode("utf8"))
         for lfile in latexfiles:
-            for _ in range(1, 4):
-                output = subprocess.run(
-                    ["xelatex", "-interaction=batchmode", lfile],
-                    cwd=tempdir.name,
-                    capture_output=True,
-                )
-                logfile.write(output.stdout)
+            try:
+                for _ in range(1, 4):
+                    output = subprocess.run(
+                        ["xelatex", "-interaction=batchmode", lfile],
+                        cwd=tempdir.name,
+                        capture_output=True,
+                    )
+                    logfile.write(output.stdout)
+            except:
+                flask.abort(500)
 
     pdf_filename = mainfile.replace(".tex", ".pdf")
-    return flask.send_file(
-        os.path.join(tempdir.name, pdf_filename),
-        attachment_filename=pdf_filename,
-        as_attachment=True,
-    )
+    try:
+        return flask.send_file(
+            os.path.join(tempdir.name, pdf_filename),
+            attachment_filename=pdf_filename,
+            as_attachment=True,
+        )
+    except:
+        flask.abort(500)
 
 
 def get_all_request_data():
@@ -65,41 +76,41 @@ def get_all_request_data():
     return data
 
 
-@app.route("/process/<templatename>", methods=['POST'])
+@app.route("/process/<templatename>", methods=["POST"])
 def process_template(templatename):
     read_templates()
     template = available_templates[templatename]
     data = get_all_request_data()
-    app.logger.info(data['json'])
+    app.logger.info(data["json"])
     processor.process_template.delay(template, data)
     return "1"
 
 
-@app.route("/process", methods=['POST'])
+@app.route("/process", methods=["POST"])
 def process_autotemplate():
     app.logger.info("autotemplate")
     read_templates()
     data = get_all_request_data()
-    app.logger.info("json: {}".format(data['json']))
+    app.logger.info("json: {}".format(data["json"]))
     use_templates = []
     for name, template in available_templates.items():
         app.logger.info(f"check process {name}")
-        if 'selector' in template['config']:
-            for selector in template['config']['selector']:
-                use = processor.process_string(f'{{{{ {selector} }}}}', data) == 'True'
+        if "selector" in template["config"]:
+            for selector in template["config"]["selector"]:
+                use = processor.process_string(f"{{{{ {selector} }}}}", data) == "True"
                 app.logger.info(f"check => {use}")
                 if use:
                     use_templates.append(name)
         else:
-            app.logger.info('no selector')
+            app.logger.info("no selector")
     for template in use_templates:
         process_template(template)
-    return '1'
+    return "1"
 
 
 @app.route("/info")
 def info():
-    return ', '.join(available_templates.keys())
+    return ", ".join(available_templates.keys())
 
 
 @app.route("/update")
@@ -128,9 +139,4 @@ def read_templates():
             )
     app.logger.debug(available_templates)
 
-
-def main():
-    repo.update()
-    read_templates()
-    app.run(debug=True)
-
+app.before_first_request(update_repo)
