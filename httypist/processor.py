@@ -32,6 +32,7 @@ def process_string(string, data):
 
 @app.task
 def process_template(template, data):
+    """ This function processes a template, using the data provided. """
     root, folders, files = next(os.walk(template["path"]))
     logger.info(f"Search files in {root}")
     templatefiles, otherfiles = [], []

@@ -6,17 +6,19 @@ This is still WIP
 
 - HTTP Callbacks, 
 - GIT Repository with the templates
-- Template selection by either url or element in the request
+- Template selection by either url or data in the request
 - PDF output using latex
 - Use template folders, including all the auxiliary files for the template
+- No need to update the docker containers in case of a template update
 
 
 ## Implementation
 
 - Python flask http handler
 - Ninja2 Template engine
-- xelatex 
-- all runs in docker containers
+- xelatex for the LaTeX processing
+- celery Offloading the load from the frontend
+- docker container for easy deployment
 
 
 ## Templates
@@ -82,3 +84,4 @@ You add a folder to the repository, containing a file like this:
 ```
 Hello {{ data['client']['name'] }}
 ```
+
