@@ -15,19 +15,22 @@ available_templates = {}
 
 
 @app.before_first_request
-def setup_logging():
+def setup():
     gunicorn_logger = logging.getLogger("gunicorn.error")
     app.logger.handlers = gunicorn_logger.handlers
     app.logger.setLevel(gunicorn_logger.level)
     app.logger.addHandler(logging.StreamHandler())
     app.logger.setLevel(logging.DEBUG)
+    update_repo()
 
 
 @app.route("/", methods=["POST"])
 def call():
-    if "main" not in flask.request.values:
-        return "missing name of main file"
-    mainfile = flask.request.values["main"]
+    try:
+        mainfile = flask.request.values["main"]
+    except:
+        return "unable to determine name of main file", 400
+
     tempdir = tempfile.TemporaryDirectory()
     latexfiles = []
     for filename, file in flask.request.files.items():
@@ -37,7 +40,7 @@ def call():
             latexfiles.append(file.name)
 
     if len(latexfiles) == 0:
-        flask.abort(400)
+        return "no valid file provided", 400
 
     logname = os.path.join(tempdir.name, "log.txt")
     with open(logname, "wb+") as logfile:
@@ -52,7 +55,7 @@ def call():
                     )
                     logfile.write(output.stdout)
             except:
-                flask.abort(500)
+                return "Error during processing", 500
 
     pdf_filename = mainfile.replace(".tex", ".pdf")
     try:
@@ -62,7 +65,7 @@ def call():
             as_attachment=True,
         )
     except:
-        flask.abort(500)
+        return "No ouput available", 500
 
 
 def get_all_request_data():
@@ -139,4 +142,3 @@ def read_templates():
             )
     app.logger.debug(available_templates)
 
-app.before_first_request(update_repo)

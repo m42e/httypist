@@ -13,7 +13,7 @@ def update(url=None, directory=None, token=None):
         _logger.debug(f"No url set using Environment: {url}")
     if url == False:
         _logger.debug(f"Neither url nor GIT_URL found")
-        raise Exception("Git repository must have an url")
+        return 
 
     if directory is None:
         _logger.debug(f"Using default directory")
