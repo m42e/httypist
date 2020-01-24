@@ -2,6 +2,11 @@ kind: pipeline
 name: trigger-docker
 
 steps:
+  - name: test  
+    image: python:3.8-alpine
+    commands:
+      - pip install tox
+      - tox
   - name: trigger  
     image: plugins/downstream
     settings:
