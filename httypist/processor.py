@@ -32,27 +32,26 @@ def process_string(string, data):
 
 @app.task
 def process_template(template, data):
+    """ This function processes a template, using the data provided. """
     root, folders, files = next(os.walk(template["path"]))
-    logger.info(f'Search files in {root}')
+    logger.info(f"Search files in {root}")
     templatefiles, otherfiles = [], []
     for x in files:
         templatefiles.append(x) if x.endswith(".jinja") else otherfiles.append(x)
 
     tempdir = tempfile.TemporaryDirectory()
     for file in otherfiles:
-        logger.info(f'copy {file} to {tempdir.name}')
-        shutil.copy(
-            os.path.join(template["path"], file), tempdir.name
-        )
+        logger.info(f"copy {file} to {tempdir.name}")
+        shutil.copy(os.path.join(template["path"], file), tempdir.name)
     for folder in folders:
-        logger.info(f'copy {file} to {tempdir.name}')
+        logger.info(f"copy {file} to {tempdir.name}")
         shutil.copytree(
             os.path.join(template["path"], folder), os.path.join(tempdir.name, folder)
         )
         shutil.copytree
     loader = jinja2.FileSystemLoader(template["path"], followlinks=True)
     for f in templatefiles:
-        logger.info(f'process {f}')
+        logger.info(f"process {f}")
         fname, ending = get_filename_infos(f)
         options = get_filetype_template_options(ending, template["config"])
         env = jinja2.Environment(loader=loader, **options)
@@ -61,8 +60,8 @@ def process_template(template, data):
             fout.write(t.render(**data))
 
     if "post" in template["config"]:
-        logger.info(f'process post step')
-        output = 'failed before calling process'
+        logger.info(f"process post step")
+        output = "failed before calling process"
         try:
             for name, command in template["config"]["post"].items():
                 logger.info(" ".join(command))
@@ -73,36 +72,33 @@ def process_template(template, data):
             logger.error(output)
 
     if "execute" in template["config"]:
-        logger.info(f'try to execute specified functions')
+        logger.info(f"try to execute specified functions")
         original_pythonpath = sys.path
         sys.path.append(template["path"])
         for execute in template["config"]["execute"]:
-            logger.info(f'execute {execute}')
-            module, function = execute.split(':')
+            logger.info(f"execute {execute}")
+            module, function = execute.split(":")
             importlib.invalidate_caches()
             mod = importlib.import_module(module)
             importlib.reload(mod)
             method_to_call = getattr(mod, function)
             result = method_to_call(template, data, logger)
-            logger.info(f'execute result: {result}')
+            logger.info(f"execute result: {result}")
 
         sys.path = original_pythonpath
 
-
     if "callback" in template["config"]:
-        logger.error('preparing callback')
+        logger.error("preparing callback")
         cb = template["config"]["callback"]
         env = jinja2.Environment(loader=loader)
         logger.info(f'template url for callback {cb["template"]}')
         url = env.from_string(cb["template"]).render(**data)
-        logger.info(f'url for callback {url}')
+        logger.info(f"url for callback {url}")
         postfiles = {}
-        headers = {
-            'x-httypist-processed': '1'
-        }
-        if 'headers' in cb:
-            headers.update(cb['headers'])
-        logger.info(f'callback headers {headers}')
+        headers = {"x-httypist-processed": "1"}
+        if "headers" in cb:
+            headers.update(cb["headers"])
+        logger.info(f"callback headers {headers}")
         for sendfile in cb["data"]:
             if sendfile["binary"]:
                 openbinary = "rb"
@@ -111,9 +107,11 @@ def process_template(template, data):
             postfiles[sendfile["name"]] = open(
                 os.path.join(tempdir.name, sendfile["file"]), openbinary
             )
-            result = requests.request(cb["method"], url, files=postfiles, headers=headers)
-            logger.info(f'callback result {result.status_code}')
-            logger.info(f'result callback {result.content}')
+            result = requests.request(
+                cb["method"], url, files=postfiles, headers=headers
+            )
+            logger.info(f"callback result {result.status_code}")
+            logger.info(f"result callback {result.content}")
 
     if "output" in template["config"]:
         op = template["config"]["output"]
