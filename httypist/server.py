@@ -129,7 +129,11 @@ def read_templates():
         baseconfig = yaml.load(open(base / "config.yml"), Loader=yaml.CLoader)
     except FileNotFoundError:
         baseconfig = {}
-    dirs = [x for x in next(os.walk(base))[1] if not x.startswith(".")]
+    try:
+        dirs = [x for x in next(os.walk(base))[1] if not x.startswith(".")]
+    except (FileNotFoundError, StopIteration):
+        dirs = []
+        app.logger.warning('no templates found')
     for dir in dirs:
         path = base / dir
         available_templates[dir] = {}
