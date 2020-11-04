@@ -23,7 +23,7 @@ def check_auth(func):
             flask.g.allowed = ["*"]
         else:
             if not "Authorization" in flask.request.headers:
-                abort(401)
+                flask.abort(401)
             data = flask.request.headers["Authorization"].encode("ascii", "ignore")
             token = str.replace(str(data), "Bearer ", "")
             if token in authentication:
@@ -53,7 +53,7 @@ def call():
         return "unable to determine name of main file", 400
 
     if not ("*" in flask.g.allowed or "manual" in flask.g.allowed):
-        abort(403)
+        flask.abort(403)
 
     tempdir = tempfile.TemporaryDirectory()
     latexfiles = []
@@ -107,7 +107,7 @@ def get_all_request_data():
 @check_auth
 def process_template(templatename):
     if not ("*" in flask.g.allowed or templatename in flask.g.allowed):
-        abort(403)
+        flask.abort(403)
     read_templates()
     template = available_templates[templatename]
     data = get_all_request_data()
