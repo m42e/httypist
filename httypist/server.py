@@ -2,6 +2,7 @@ import flask
 import contextlib
 import functools
 import tempfile
+import collections
 import os, os.path
 import subprocess
 import copy
@@ -13,7 +14,7 @@ from . import processor, repo
 app = flask.Flask(__name__)
 
 available_templates = {}
-authentication = {}
+authentication = collections.defaultdict(list)
 
 
 def check_auth(func):
@@ -175,15 +176,16 @@ def read_templates():
                 authentication[e["token"]] = [e["templates"]]
             else:
                 authentication[e["token"]] = [].expand(e["templates"])
+        del baseconfig['access']
     try:
         dirs = [x for x in next(os.walk(base))[1] if not x.startswith(".")]
     except (FileNotFoundError, StopIteration):
         dirs = []
         app.logger.warning("no templates found")
-    for dir in dirs:
-        path = base / dir
-        available_templates[dir] = {}
-        template = available_templates[dir]
+    for dirname in dirs:
+        path = base / dirname
+        available_templates[dirname] = {}
+        template = available_templates[dirname]
         template["path"] = str(path)
         template["config"] = copy.deepcopy(baseconfig)
         with contextlib.suppress(FileNotFoundError):
@@ -192,8 +194,6 @@ def read_templates():
             )
             if "access" in baseconfig:
                 for e in template["config"]["access"]:
-                    if isinstance(e["templates"], str):
-                        authentication[e["token"]].append(e["templates"])
-                    else:
-                        authentication[e["token"]].extend(e["templates"])
+                    if isinstance(e, str):
+                        authentication[e].append(dirname)
     app.logger.debug(available_templates)
