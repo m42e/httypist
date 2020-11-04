@@ -10,10 +10,10 @@ _logger = logging.getLogger(__name__)
 def update(url=None, directory=None, token=None):
     if url is None:
         url = os.getenv("GIT_URL", False)
-        _logger.debug(f"No url set using Environment: {url}")
+        _logger.warn(f"No url set using Environment: {url}")
     if url == False:
-        _logger.debug(f"Neither url nor GIT_URL found")
-        return 
+        _logger.warn(f"Neither url nor GIT_URL found")
+        return
 
     if directory is None:
         _logger.debug(f"Using default directory")

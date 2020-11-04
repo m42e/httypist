@@ -148,8 +148,7 @@ def info():
     for key in available_templates:
         if "*" in flask.g.allowed or key in flask.g.allowed:
             know_keys.append(key)
-
-    return ", ".join(know_keys.keys())
+    return ", ".join(know_keys)
 
 
 @app.route("/update")
