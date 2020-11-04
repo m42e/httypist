@@ -1,13 +1,20 @@
 # Document automation
 
-This is still WIP
+This is actually getting useful.
+
+## Use of this
+
+It is a http typist so a httypist. It should generate document for you in a known environment (docker container) and could be triggered via http. And the configuration and templates should be in a git repository.
 
 ## Targets
 
-- HTTP Callbacks, 
+- HTTP Hooks a triggers
+- HTTP Callbacks for the result 
 - GIT Repository with the templates
-- Template selection by either url or data in the request
-- PDF output using latex
+- Template selection by 
+  - url or 
+  - data in the request
+- PDF output using latex (you have to use a docker image as base for the worker, which has latex installed)
 - Use template folders, including all the auxiliary files for the template
 - No need to update the docker containers in case of a template update
 
@@ -16,7 +23,7 @@ This is still WIP
 
 - Python flask http handler
 - Ninja2 Template engine
-- xelatex for the LaTeX processing
+- xelatex for the LaTeX processing (if you wish and need)
 - celery Offloading the load from the frontend
 - docker container for easy deployment
 
@@ -24,7 +31,7 @@ This is still WIP
 ## Templates
 
 The templates are stored in a git repository.
-Each template has to be in a separate folder. All files, with the ending `.ninja` will be processed for the selected template.
+Each template has to be in a separate folder. All files, with the ending `.ninja` will be processed as template. This means you can keep some structure for your documents. 
 The template folder could have a separate file named `config.yml` which could set the options for the selection of this template and additional options passed to the processor
 
 ### config.yml
@@ -73,7 +80,6 @@ You start the docker container with a set of environment variables, such as:
 ```
 GIT_REPO=somehost:your/repo
 GIT_USERNAME=username
-GIT_SSH_KEY=ssh-rsa..........
 REDIS_URL=redis://localhost
 ```
 
