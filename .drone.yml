@@ -20,7 +20,6 @@ steps:
 kind: secret
 name: drone_token
 get:
-  path: kv/data/drone/drone
-  name: token
+  name: drone_token
 
 
