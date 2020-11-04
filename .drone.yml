@@ -5,6 +5,7 @@ steps:
   - name: test  
     image: python:3.8-alpine
     commands:
+      - apk add gcc
       - pip install tox
       - tox
   - name: trigger  
