@@ -3,9 +3,8 @@ name: trigger-docker
 
 steps:
   - name: test  
-    image: python:3.8-alpine
+    image: python:3.8
     commands:
-      - apk add gcc
       - pip install tox
       - tox
   - name: trigger  
