@@ -192,7 +192,7 @@ def read_templates():
             template["config"].update(
                 yaml.load(open(path / "config.yml"), Loader=yaml.CLoader)
             )
-            if "access" in baseconfig:
+            if "access" in template['config']:
                 for e in template["config"]["access"]:
                     if isinstance(e, str):
                         authentication[e].append(dirname)
