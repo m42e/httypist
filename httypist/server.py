@@ -1,5 +1,6 @@
 import flask
 import contextlib
+import functools
 import tempfile
 import os, os.path
 import subprocess
@@ -12,6 +13,25 @@ from . import processor, repo
 app = flask.Flask(__name__)
 
 available_templates = {}
+authentication = {}
+
+
+def check_auth(func):
+    @functools.wraps(func)
+    def login_required(*args, **kwargs):
+        if len(authentication) == 0:
+            flask.g.allowed = ["*"]
+        else:
+            if not "Authorization" in request.headers:
+                abort(401)
+            data = request.headers["Authorization"].encode("ascii", "ignore")
+            token = str.replace(str(data), "Bearer ", "")
+            if token in authentication:
+                flask.g.allowed = authentication[token]
+
+        return func(*args, **kwargs)
+
+    return login_required
 
 
 @app.before_first_request
@@ -25,11 +45,15 @@ def setup():
 
 
 @app.route("/", methods=["POST"])
+@check_auth
 def call():
     try:
         mainfile = flask.request.values["main"]
     except:
         return "unable to determine name of main file", 400
+
+    if not ("*" in flask.g.allowed or "manual" in flask.g.allowed):
+        abort(403)
 
     tempdir = tempfile.TemporaryDirectory()
     latexfiles = []
@@ -80,7 +104,10 @@ def get_all_request_data():
 
 
 @app.route("/process/<templatename>", methods=["POST"])
+@check_auth
 def process_template(templatename):
+    if not ("*" in flask.g.allowed or templatename in flask.g.allowed):
+        abort(403)
     read_templates()
     template = available_templates[templatename]
     data = get_all_request_data()
@@ -90,6 +117,7 @@ def process_template(templatename):
 
 
 @app.route("/process", methods=["POST"])
+@check_auth
 def process_autotemplate():
     app.logger.info("autotemplate")
     read_templates()
@@ -103,6 +131,8 @@ def process_autotemplate():
                 use = processor.process_string(f"{{{{ {selector} }}}}", data) == "True"
                 app.logger.info(f"check => {use}")
                 if use:
+                    if not ("*" in flask.g.allowed or name in flask.g.allowed):
+                        continue
                     use_templates.append(name)
         else:
             app.logger.info("no selector")
@@ -112,8 +142,14 @@ def process_autotemplate():
 
 
 @app.route("/info")
+@check_auth
 def info():
-    return ", ".join(available_templates.keys())
+    know_keys = []
+    for key in available_templates:
+        if "*" in flask.g.allowed or key in flask.g.allowed:
+            know_keys.append(key)
+
+    return ", ".join(know_keys.keys())
 
 
 @app.route("/update")
@@ -124,16 +160,23 @@ def update_repo():
 
 
 def read_templates():
+    authentication.clear()
     base = pathlib.PosixPath("repo")
     try:
         baseconfig = yaml.load(open(base / "config.yml"), Loader=yaml.CLoader)
     except FileNotFoundError:
         baseconfig = {}
+    if "access" in baseconfig:
+        for e in baseconfig["access"]:
+            if isinstance(e["templates"], str):
+                authentication[e["token"]] = [e["templates"]]
+            else:
+                authentication[e["token"]] = [].expand(e["templates"])
     try:
         dirs = [x for x in next(os.walk(base))[1] if not x.startswith(".")]
     except (FileNotFoundError, StopIteration):
         dirs = []
-        app.logger.warning('no templates found')
+        app.logger.warning("no templates found")
     for dir in dirs:
         path = base / dir
         available_templates[dir] = {}
@@ -144,5 +187,10 @@ def read_templates():
             template["config"].update(
                 yaml.load(open(path / "config.yml"), Loader=yaml.CLoader)
             )
+            if "access" in baseconfig:
+                for e in template["config"]["access"]:
+                    if isinstance(e["templates"], str):
+                        authentication[e["token"]].append(e["templates"])
+                    else:
+                        authentication[e["token"]].extend(e["templates"])
     app.logger.debug(available_templates)
-
