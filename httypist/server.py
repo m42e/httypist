@@ -22,6 +22,7 @@ def check_auth(func):
         if len(authentication) == 0:
             flask.g.allowed = ["*"]
         else:
+            flask.g.allowed = []
             if not "Authorization" in flask.request.headers:
                 flask.abort(401)
             data = flask.request.headers["Authorization"]
