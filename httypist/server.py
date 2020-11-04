@@ -26,6 +26,8 @@ def check_auth(func):
                 flask.abort(401)
             data = flask.request.headers["Authorization"].encode("ascii", "ignore")
             token = str.replace(str(data), "Bearer ", "")
+            app.logger.info(token)
+            app.logger.info(authentication)
             if token in authentication:
                 flask.g.allowed = authentication[token]
 
