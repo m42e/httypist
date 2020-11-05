@@ -17,6 +17,7 @@ It is a http typist so a httypist. It should generate document for you in a know
 - PDF output using latex (you have to use a docker image as base for the worker, which has latex installed)
 - Use template folders, including all the auxiliary files for the template
 - No need to update the docker containers in case of a template update
+- Simple mechanism for authentication
 
 
 ## Implementation
@@ -27,12 +28,23 @@ It is a http typist so a httypist. It should generate document for you in a know
 - celery Offloading the load from the frontend
 - docker container for easy deployment
 
+## Issues to think about
 
-## Templates
+- At the moment the update and the generation are not protected against each other, so generation may fail when an update is started at the same time which e.g. deletes the template.
 
-The templates are stored in a git repository.
-Each template has to be in a separate folder. All files, with the ending `.ninja` will be processed as template. This means you can keep some structure for your documents. 
-The template folder could have a separate file named `config.yml` which could set the options for the selection of this template and additional options passed to the processor
+
+## Usage
+
+### 1. Create a repository with templates
+
+Create a git repository with templates you want to use. Each template requires:
+
+- a own folder
+- file(s) with the extension `.jinja`
+- a config file `config.yml`
+
+All files, with the ending `.jinja` will be processed as template. This means you can keep some structure for your documents. 
+The template folder could have a separate file named `config.yml` which could set the options for the selection of this template and additional options passed to the processor.
 
 ### config.yml
 
@@ -63,6 +75,8 @@ callback:
   data: 
     - name: vertrag.pdf
       binary: true
+access:
+  - "sometokenyoucanchoose"
 ```
 The `selector` selects the matching template based on the data provided. This enables to have a folder structure besides the selection mechanism and reuse templates.
 
@@ -72,21 +86,25 @@ In the `post` section you could define commands (with parameters) that should be
 
 The final `callback` does exactly what the name suggests, it performs a callback to the url (which is also a template and can use the data from the request). It could include data.
 
+Under the `access` key you can list some strings which act as tokens required in the authentication header to generate the document.
 
-## Workflow
+
+### Docker
+
+There are two docker containers, one is for the frontend, taking the requests, the other one is for the worker, actually doing the real work.
+It is utilizing redis for the job and result. See the [docker-compose.yml](docker/docker-compose.yml) for details
 
 You start the docker container with a set of environment variables, such as:
 
 ```
 GIT_REPO=somehost:your/repo
-GIT_USERNAME=username
-REDIS_URL=redis://localhost
 ```
 
-This will clone the git repository containing the templates and configuration. There will also be an url for updating the repository, so webhooks for the repository work fine.
+This will clone the git repository containing the templates and configuration. There will also be an URL for updating the repository (`/update`), so webhooks for the repository work fine.
 
 You add a folder to the repository, containing a file like this:
 
+`test.jinja`
 ```
 Hello {{ data['client']['name'] }}
 ```
