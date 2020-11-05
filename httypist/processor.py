@@ -1,5 +1,6 @@
 import jinja2
 import requests
+import sys
 import os
 import tempfile
 import subprocess
@@ -7,6 +8,8 @@ import importlib
 import celery
 import shutil
 from celery.utils.log import get_task_logger
+import pathlib
+import io
 
 logger = get_task_logger(__name__)
 
@@ -15,10 +18,8 @@ app = celery.Celery(
 )
 
 
-def get_filename_infos(filename):
-    fname = filename[:-6]
-    ending = fname.rsplit(".", 1)[1]
-    return fname, ending
+def get_filename_infos(filename: pathlib.Path):
+    return filename.stem, filename.suffixes[-2]
 
 
 def get_filetype_template_options(filetype, config):
@@ -33,46 +34,66 @@ def process_string(string, data):
 @app.task
 def process_template(template, data):
     """ This function processes a template, using the data provided. """
+    logging_content = io.StreamIO()
+    sh = logging.StreamHandler(logging_content)
+    logger.addHandler(sh)
     root, folders, files = next(os.walk(template["path"]))
     logger.info(f"Search files in {root}")
     templatefiles, otherfiles = [], []
-    for x in files:
-        templatefiles.append(x) if x.endswith(".jinja") else otherfiles.append(x)
 
+    template_path = pathlib.Path(template['path'])
+
+    logger.info(f"Create Temporary Directory")
     tempdir = tempfile.TemporaryDirectory()
-    for file in otherfiles:
-        logger.info(f"copy {file} to {tempdir.name}")
-        shutil.copy(os.path.join(template["path"], file), tempdir.name)
+
+    # copy non-template files to temp directoy
+    for file in files:
+        filepath = template_path / file
+        if filepath.suffix == 'jinja':
+            templatefiles.append(filepath)
+        else:
+            logger.info(f"copy {file} to {tempdir.name}")
+            shutil.copy(os.path.join(template["path"], file), tempdir.name)
+
+    # copy folders to the temp directory
     for folder in folders:
         logger.info(f"copy {file} to {tempdir.name}")
         shutil.copytree(
             os.path.join(template["path"], folder), os.path.join(tempdir.name, folder)
         )
         shutil.copytree
-    loader = jinja2.FileSystemLoader(template["path"], followlinks=True)
+
+    loader = jinja2.FileSystemLoader(template_path, followlinks=True)
     for f in templatefiles:
         logger.info(f"process {f}")
         fname, ending = get_filename_infos(f)
         options = get_filetype_template_options(ending, template["config"])
+        # we might have a separate environment config per filetype
         env = jinja2.Environment(loader=loader, **options)
         t = env.get_template(f)
         with open(os.path.join(tempdir.name, fname), "w") as fout:
             fout.write(t.render(**data))
 
+    # do post-generate-processing if any
     if "post" in template["config"]:
         logger.info(f"process post step")
         output = "failed before calling process"
         try:
-            for name, command in template["config"]["post"].items():
-                logger.info(" ".join(command))
-                output = subprocess.run(
-                    command, cwd=tempdir.name, check=True, capture_output=True
-                )
+            for f in templatefiles:
+                fname, ending = get_filename_infos(f)
+                if ending in template['config']['post']:
+                    template_post = template["config"]["post"][ending]
+                    for name, command in template_post['commands'].items():
+                        logger.info("running %s: %s", name, " ".join(command))
+                        output = subprocess.run(
+                            command, cwd=tempdir.name, check=True, capture_output=True
+                        )
         finally:
             logger.error(output)
 
     if "execute" in template["config"]:
         logger.info(f"try to execute specified functions")
+        # add the path of the template to the pythonpath, we try to call some functions from there
         original_pythonpath = sys.path
         sys.path.append(template["path"])
         for execute in template["config"]["execute"]:

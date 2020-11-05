@@ -1,3 +1,123 @@
+import fastapi
+import copy
+import contextlib
+import functools
+import os
+import yaml
+import pathlib
+import collections
+from rq import Queue
+from redis import Redis
+from httypist import schema
+from . import repo
+
+
+app = fastapi.FastAPI()
+available_templates = {}
+authentication = collections.defaultdict(list)
+
+
+def build_error_response(msg, code=-1, status="error"):
+    return dict(
+        status=status,
+        success=False,
+        result=dict(
+            description=msg,
+            code=code
+        )
+    )
+
+def build_success_response(result, status="success"):
+    return dict(
+        status=status,
+        success=True,
+        result=result
+    )
+
+def check_auth(func):
+    @functools.wraps(func)
+    def login_required(*args, **kwargs):
+        if 'request' in kwargs:
+            request = kwargs['request']
+            if len(authentication) == 0:
+                request.state.allowed = ["*"]
+            else:
+                request.state.allowed = []
+                if not "Authorization" in request.headers:
+                    raise fastapi.HTTPException(status_code=401)
+                data = request.headers["Authorization"]
+                token = data
+                if token in authentication:
+                    request.state.allowed = authentication[token]
+
+        return func(*args, **kwargs)
+
+    return login_required
+
+@app.get("/", response_model=schema.Response)
+def access_root():
+    return build_error_response("Unknown request", 0x0202, "general error")
+
+@app.get("/info", response_model=schema.Response)
+@check_auth
+def info(request:fastapi.Request):
+    know_keys = []
+    for key in available_templates:
+        if "*" in request.state.allowed or key in request.state.allowed:
+            know_keys.append(key)
+    return build_success_response(know_keys)
+
+@app.get("/update")
+def update_repo():
+    repo.update()
+    read_templates()
+    return build_success_response("update triggered")
+
+
+
+def read_templates():
+    authentication.clear()
+    base = pathlib.PosixPath("repo")
+
+    try:
+        baseconfig = yaml.load(open(base / "config.yml"), Loader=yaml.CLoader)
+    except FileNotFoundError:
+        baseconfig = {}
+    if "access" in baseconfig:
+        for e in baseconfig["access"]:
+            if isinstance(e["templates"], str):
+                authentication[e["token"]] = [e["templates"]]
+            else:
+                authentication[e["token"]] = [].expand(e["templates"])
+        del baseconfig['access']
+
+    try:
+        dirs = [x for x in next(os.walk(base))[1] if not x.startswith(".")]
+    except (FileNotFoundError, StopIteration):
+        dirs = []
+        #app.logger.warning("no templates found")
+
+    for dirname in dirs:
+        path = base / dirname
+        available_templates[dirname] = {}
+        template = available_templates[dirname]
+        template["path"] = str(path)
+        template["config"] = copy.deepcopy(baseconfig)
+        with contextlib.suppress(FileNotFoundError):
+            template["config"].update(
+                yaml.load(open(path / "config.yml"), Loader=yaml.CLoader)
+            )
+            if "access" in template['config']:
+                for e in template["config"]["access"]:
+                    if isinstance(e, str):
+                        authentication[e].append(dirname)
+    #app.logger.debug(available_templates)
+
+"""
+# Tell RQ what Redis connection to use
+redis_conn = Redis(host='redis')
+q = Queue("html", connection=redis_conn)  # no args implies the default queue
+
 import flask
 import contextlib
 import functools
@@ -197,3 +317,5 @@ def read_templates():
                     if isinstance(e, str):
                         authentication[e].append(dirname)
     app.logger.debug(available_templates)
+    """
+update_repo()
