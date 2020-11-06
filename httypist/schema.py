@@ -9,7 +9,7 @@ from enum import Enum
 class Response(BaseModel):
     status: str
     success: bool
-    result: t.Union["ErrorResult", "RequestResult", "StatusResult", "RespsoneResult", str]
+    result: t.Union["ErrorResult", "RequestResult", "StatusResult", "RespsoneResult", "MultipleRequestsResult", str]
 
     class Config:
         schema_extra = {
@@ -22,11 +22,14 @@ class ErrorResult(BaseModel):
     code: int
 
 
+
 class RequestResult(BaseModel):
     template: str
     request_id: str
     request_timestamp: int
 
+class MultipleRequestsResult(BaseModel):
+    requests: t.List[RequestResult]
 
 class StatusResult(BaseModel):
     finished: bool
