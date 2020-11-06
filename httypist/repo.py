@@ -25,7 +25,19 @@ def update(url=None, directory=None, token=None):
 
     if not os.path.exists(directory):
         _logger.debug(f"Clone repository to {directory}")
-        subprocess.run(["git", "clone", "--recurse-submodules", "-j4", "--depth", "1", url, directory], env=env)
+        subprocess.run(
+            [
+                "git",
+                "clone",
+                "--recurse-submodules",
+                "-j4",
+                "--depth",
+                "1",
+                url,
+                directory,
+            ],
+            env=env,
+        )
     else:
         _logger.debug(f"Update Repository")
         subprocess.run(["git", "fetch"], cwd=directory, env=env)

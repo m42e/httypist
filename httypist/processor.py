@@ -16,6 +16,10 @@ import logging
 import io
 from rq import get_current_job
 
+
+import http.client as http_client
+http_client.HTTPConnection.debuglevel = 1
+
 logger = logging.getLogger(__name__)
 
 
@@ -78,7 +82,9 @@ class Template(object):
     def create_temp_folder(self):
         self._tempdir = tempfile.TemporaryDirectory(prefix=self.name)
         self.tempdir = pathlib.Path(self._tempdir.name)
-        self.logger.info(f"Created Temporary Directory {self.tempdir} {self.tempdir.is_dir()}")
+        self.logger.info(
+            f"Created Temporary Directory {self.tempdir} {self.tempdir.is_dir()}"
+        )
 
     def prepare_auxilary_files(self):
         for folder in self.folders:
@@ -113,12 +119,15 @@ class Template(object):
                 try:
                     commands = self.template["config"]["post"][ending]["commands"]
                     for name, command in commands.items():
-                        self.logger.info(
-                            "running %s on %s: %s", name, f, command
+                        self.logger.info("running %s on %s: %s", name, f, command)
+                        command_list = list(
+                            shlex.shlex(command, punctuation_chars=True)
                         )
-                        command_list = list(shlex.shlex(command,  punctuation_chars=True))
                         output = subprocess.run(
-                            command_list, cwd=self.tempdir, check=True, capture_output=True
+                            command_list,
+                            cwd=self.tempdir,
+                            check=True,
+                            capture_output=True,
                         )
 
                 except KeyError:
@@ -152,28 +161,34 @@ class Template(object):
         self.logger.info("Creating result dir")
         self.resultdir = pathlib.Path(tempfile.mkdtemp(prefix="result_"))
         self.logger.warning("Packing all files")
-        with zipfile.ZipFile(self.resultdir / "temp.zip", "w", compression=zipfile.ZIP_LZMA) as zf:
+        with zipfile.ZipFile(
+            self.resultdir / "temp.zip", "w", compression=zipfile.ZIP_LZMA
+        ) as zf:
             for i in glob.iglob(str(self.tempdir / "**/*"), recursive=True):
                 path_in_zip = str(pathlib.Path(i).relative_to(self.tempdir))
                 zf.write(i, arcname=path_in_zip)
         self.logger.warning("Packing defined result files")
-        with zipfile.ZipFile(self.resultdir / "result.zip", "w", compression=zipfile.ZIP_LZMA) as zf:
+        with zipfile.ZipFile(
+            self.resultdir / "result.zip", "w", compression=zipfile.ZIP_LZMA
+        ) as zf:
             try:
                 for f in self.template["config"]["output"]["files"]:
                     try:
                         file = self.tempdir / f
                         zf.write(file, arcname=f)
                     except FileNotFoundError as e:
-                        self.logger.warning(f"Expected output File {f}({file}) not found (%s)", e)
+                        self.logger.warning(
+                            f"Expected output File {f}({file}) not found (%s)", e
+                        )
             except KeyError:
                 self.logger.warning("not output files specified")
 
     def do_callbacks(self):
-        if "callback" not in self.template["config"]:
+        if "callbacks" not in self.template["config"]:
             return
         self.logger.error("preparing callback")
         try:
-            for cbname, cb in self.template["config"]["callbacks"]:
+            for cbname, cb in self.template["config"]["callbacks"].items():
                 self.logger.info(f"processing callback {cbname}")
                 loader = jinja2.FileSystemLoader(self.template_path, followlinks=True)
                 env = jinja2.Environment(loader=loader)
@@ -188,8 +203,9 @@ class Template(object):
                 self.logger.debug(f"callback headers {headers}")
 
                 try:
+                    self.logger.info(cb["data"])
                     for sendfile in cb["data"]:
-                        if "binary" not in sendfile["binary"] or sendfile["binary"]:
+                        if "binary" not in sendfile or sendfile["binary"]:
                             openbinary = "rb"
                         else:
                             openbinary = "r"
@@ -198,17 +214,19 @@ class Template(object):
                             self.tempdir / sendfile["file"], openbinary
                         )
                 except:
-                    self.logger.warn("configuration error for callback files")
-                if 'send_zip' in cb and cb["send_zip"]:
-                    postfiles[sendfile["name"]] = open(
-                        self.resultdir / 'result.zip', 'rb'
+                    self.logger.exception("configuration error for callback files")
+                if "send_result" in cb and cb["send_result"]:
+                    postfiles['result'] = open(
+                        self.resultdir / "result.zip", "rb"
                     )
-                if 'send_all' in cb and cb["send_all"]:
-                    postfiles[sendfile["name"]] = open(
-                        self.resultdir / 'temp.zip', 'rb'
+                if "send_temp" in cb and cb["send_temp"]:
+                    postfiles['complete'] = open(
+                        self.resultdir / "temp.zip", "rb"
                     )
                 if len(postfiles) == 0:
                     postfiles = None
+                self.logger.info(f"sending files {postfiles}")
+                self.logger.info(f"method: {cb['method']}")
                 result = requests.request(
                     cb["method"], url, files=postfiles, headers=headers
                 )
@@ -228,11 +246,6 @@ def process_template(template, data):
     t.job = get_current_job()
     t.process()
 
-    result = dict(
-        template=template,
-        data=data,
-        result_folder=t.resultdir,
-        log=t.log
-    )
+    result = dict(template=template, data=data, result_folder=t.resultdir, log=t.log)
 
     return result
