@@ -150,18 +150,32 @@ async def temp_zip(request: fastapi.Request, jobid: str = fastapi.Path(...)):
     )
 
 
+async def get_all_available_data(request):
+    try:
+        json = await request.json()
+    except:
+        json = None
+    body = await request.body()
+    return dict(
+        body=body,
+        json=json,
+        headers=dict(request.headers),
+        query=dict(request.query_params),
+        client=request.client.host,
+    )
+
 @app.post("/process/{templatename}")
 @check_auth
 async def process_template(
     request: fastapi.Request,
     templatename: str = fastapi.Path(...),
-    data=fastapi.Body(...),
 ):
+    '''This triggers the processing of a given template with the data provided in the request'''
     if not ("*" in request.state.allowed or templatename in request.state.allowed):
         raise HTTPException(status_code=403)
     template = available_templates[templatename]
-    logger.info(data)
-    job = q.enqueue(processor.process_template, template=template, data=data)
+    alldata = await get_all_available_data(request)
+    job = q.enqueue(processor.process_template, template=template, data=alldata)
     resp = schema.RequestResult(
         template=templatename,
         request_id=job.id,
@@ -170,33 +184,21 @@ async def process_template(
     return build_success_response(resp)
 
 
-async def get_all_available_data(request):
-    try:
-        json = await request.json()
-    except:
-        json = None
-    body = await request.body()
-    return dict(
-        body=request.body,
-        json=json,
-        headers=request.headers,
-        query=request.query_params,
-        client=request.client.host,
-    )
-
 
 @app.post("/process")
 @check_auth
-async def autoprocess(request: fastapi.Request, data=fastapi.Body(...)):
+async def autoprocess(request: fastapi.Request):
+    '''This triggers the processing of a template with the data provided in the request. The template will be selected based on the data provided and the selector in the template config.'''
     logger.info("autotemplate")
-    logger.debug("body: {}".format(data))
+    alldata = await get_all_available_data(request)
+    logger.debug("data: {}".format(alldata))
     use_templates = []
     for name, template in available_templates.items():
         logger.debug(f"check process {name}")
         if "selector" in template["config"]:
             for selector in template["config"]["selector"]:
                 use = (
-                    processor.process_string(f"{{{{ {selector} }}}}", {"data": data})
+                    processor.process_string(f"{{{{ {selector} }}}}", alldata)
                     == "True"
                 )
                 logger.debug(f"check: {{{{ {selector} }}}} => {use}")

@@ -49,6 +49,16 @@ Create a git repository with templates you want to use. Each template requires:
 All files, with the ending `.jinja` will be processed as template. This means you can keep some structure for your documents. 
 The template folder could have a separate file named `config.yml` which could set the options for the selection of this template and additional options passed to the processor.
 
+### Data available
+
+In the evaluation of the selector (which is expected to be a jinja template) and the document template the following data is available:
+
+- **json**: The bodies content (if it is json) already parsed.
+- **body**: The raw body content
+- **headers**: All the headers as dict.
+- **query**: The query parameters as dict.
+- **client**: The client host.
+
 ### config.yml
 
 This is an example file:
