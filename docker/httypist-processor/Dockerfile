@@ -18,6 +18,8 @@ WORKDIR /app
 
 COPY . /app/
 
+RUN ls
+
 RUN tlmgr update --self; \
     tlmgr install \
 		latexmk \
@@ -28,7 +30,7 @@ RUN tlmgr update --self; \
 		titlesec; \
     tlmgr update --all
 
-RUN   pip install -r httypist/requirements.txt \
+RUN   pip install -r requirements.txt \
       && pip install httypist
 
 CMD [ "python3", "-m", "httypist", "--worker"]

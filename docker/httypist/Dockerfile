@@ -10,7 +10,9 @@ WORKDIR /app
 
 COPY . /app/
 
-RUN  pip install -r httypist/requirements.txt \
+RUN ls
+
+RUN  pip install -r requirements.txt \
       && pip install httypist
 
 RUN mkdir /root/.ssh/ \
