@@ -20,7 +20,7 @@ RUN  curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py \
 
 RUN mkdir /root/.ssh/ \
     && echo "host *" > /root/.ssh/config \
-    && echo "IdentityFile /app/ssh_key_for_repo" >> /root/.ssh/config 
+    && echo "IdentityFile /app/ssh_key_for_repo" >> /root/.ssh/config  \
     && echo "StrictHostKeyChecking no" >> /root/.ssh/config
 
 CMD ["uvicorn", "--port", "8000", "httypist:app"]
