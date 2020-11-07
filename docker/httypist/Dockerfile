@@ -4,6 +4,7 @@ ARG GITEA_TOKEN
 
 RUN apt-get update && apt-get install -y \
     git \
+    python3-pip \
  && rm -rf /var/lib/apt/lists/*
 
 
@@ -13,9 +14,7 @@ WORKDIR /app
 COPY httypist /app/
 
 RUN pip install -r httypist/requirements
-RUN  curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py \
-      && python3.8 get-pip.py \
-      && pip install -r httypist/requirements.txt \
+RUN  pip install -r httypist/requirements.txt \
       && pip install httypist
 
 RUN mkdir /root/.ssh/ \

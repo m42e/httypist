@@ -13,7 +13,10 @@ WORKDIR /app
 
 COPY httypist /app/
 
-RUN   pip install -r httypist/requirements.txt \
+RUN ls
+RUN ls -R /app
+
+RUN   pip install -r /app/httypist/requirements.txt \
       && pip install httypist
 
 CMD [ "python3", "-m", "httypist", "--worker"]
