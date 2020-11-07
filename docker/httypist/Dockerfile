@@ -1,7 +1,5 @@
 FROM python:3.8
 
-ARG GITEA_TOKEN
-
 RUN apt-get update && apt-get install -y \
     git \
     python3-pip \
@@ -10,10 +8,10 @@ RUN apt-get update && apt-get install -y \
 VOLUME ["/app"]
 WORKDIR /app
 
-COPY httypist /app/
+COPY . /app/
 
-RUN  pip install -r requirements.txt \
-      && pip install .
+RUN  pip install -r httypist/requirements.txt \
+      && pip install httypist
 
 RUN mkdir /root/.ssh/ \
     && echo "host *" > /root/.ssh/config \

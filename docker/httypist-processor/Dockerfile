@@ -28,8 +28,8 @@ RUN tlmgr update --self; \
 		titlesec; \
     tlmgr update --all
 
-RUN   pip install -r requirements.txt \
-      && pip install .
+RUN   pip install -r httypist/requirements.txt \
+      && pip install httypist
 
 CMD [ "python3", "-m", "httypist", "--worker"]
 
