@@ -7,7 +7,7 @@ networks:
 services:
   httypist:
     container_name: httypist
-    image: my_registry/httypist:latest
+    image: m42e/httypist:latest
     environment:
       - REDIS_URL=redis://httypist_redis
       - GIT_URL=git@github.como:my/repo
@@ -19,18 +19,19 @@ services:
     volumes:
       - /var/docker/httypist/app:/app
       # Place a proper passwordless ssh key for accessing the repo under GIT_URL in /app/ssh_key_for_repo
+
   redis:
     container_name: httypist_redis
     image: redis
     restart: always
     networks:
       - httypist
+
   httypist-processor:
     environment:
       - REDIS_URL=redis://httypist_redis
     container_name: httypist_processor
-    #example
-    image: my_registry/httypist-processor:latest
+    image: m42e/httypist-processor:latest
     restart: always
     volumes_from:
       - httypist
