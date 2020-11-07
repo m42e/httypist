@@ -22,15 +22,18 @@ It is a http typist so a httypist. It should generate document for you in a know
 
 ## Implementation
 
-- Python flask http handler
-- Ninja2 Template engine
+- Python fastapi http handler
+- Ninja2 Template engine (for your templates)
 - xelatex for the LaTeX processing (if you wish and need)
-- celery Offloading the load from the frontend
+- rq for the background generation of documents
 - docker container for easy deployment
 
 ## Issues to think about
 
 - At the moment the update and the generation are not protected against each other, so generation may fail when an update is started at the same time which e.g. deletes the template.
+- It is single user design at the moment. So you can configure only one repo as source for all the templates.
+- The template source is restricted to folders. Templates in subfolders are not supported.
+- It is an optimistic implementation
 
 
 ## Usage
