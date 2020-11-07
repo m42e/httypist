@@ -13,7 +13,7 @@ COPY . /app/
 RUN ls
 
 RUN  pip install -r requirements.txt \
-      && pip install httypist
+      && pip install ./httypist
 
 RUN mkdir /root/.ssh/ \
     && echo "host *" > /root/.ssh/config \
