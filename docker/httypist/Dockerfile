@@ -6,12 +6,21 @@ RUN apt-get update && apt-get install -y \
     git \
  && rm -rf /var/lib/apt/lists/*
 
-RUN GIT_TRACE=2 pip install git+https://$GITEA_TOKEN@gitea.d1v3.de/matthias/httypist
-RUN pip install gunicorn
 
 VOLUME ["/app"]
 WORKDIR /app
 
-RUN mkdir /root/.ssh/ && echo "host *" > /root/.ssh/config && echo "IdentityFile /app/ssh_key_for_repo" >> /root/.ssh/config && echo "StrictHostKeyChecking no" >> /root/.ssh/config
+COPY httypist /app/
 
-CMD ["gunicorn", "-b", "0.0.0.0:8000", "httypist.server:app"]
+RUN pip install -r httypist/requirements
+RUN  curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py \
+      && python3.8 get-pip.py \
+      && pip install -r httypist/requirements
+      && pip install httypist
+
+RUN mkdir /root/.ssh/ \
+    && echo "host *" > /root/.ssh/config \
+    && echo "IdentityFile /app/ssh_key_for_repo" >> /root/.ssh/config 
+    && echo "StrictHostKeyChecking no" >> /root/.ssh/config
+
+CMD ["uvicorn", "--port", "8000", "httypist:app"]
