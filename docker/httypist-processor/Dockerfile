@@ -3,9 +3,14 @@ FROM texlive/texlive:latest
 RUN apt-get update && apt-get install -y \
       git \
       curl \
+      pandoc \
       python3.8 \
       python3-pip \
- && rm -rf /var/lib/apt/lists/*
+      python3-pygments \
+     && apt-get --purge remove -y .\*-doc$ \
+     && apt-get clean -y \
+     && apt-get autoremove \
+     && rm -rf /var/lib/apt/lists/*
 
 
 VOLUME ["/app"]
@@ -15,6 +20,16 @@ COPY httypist /app/
 
 RUN ls
 RUN ls -R /app
+
+RUN tlmgr update --self; \
+    tlmgr install \
+		latexmk \
+		lipsum \
+		background \
+		everypage \
+		siunitx \
+		titlesec; \
+    tlmgr update --all
 
 RUN   pip install -r /app/httypist/requirements.txt \
       && pip install httypist
