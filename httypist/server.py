@@ -30,16 +30,24 @@ q = Queue("process", connection=redis_conn)  # no args implies the default queue
 
 
 def build_error_response(msg, code=-1, status="error"):
+    """Make Error Response based on the message and code"""
     return dict(status=status, success=False, result=dict(description=msg, code=code))
 
 
 def build_success_response(result, status="success"):
+    """Make Success Response based on the result"""
     return dict(status=status, success=True, result=result)
 
 
 def check_auth(func):
+    """Decorate the routes to get a basic protection information. The allowed templates are stored in the request.state as allowed.
+    N.B.:
+        - The real check if the template is allowed with the provided `Authorization` header is not done here as we may not know, what template to use.
+        - It is required that the decorated function includes a request:fastapi.Request parameter.
+    """
+
     @functools.wraps(func)
-    def login_required(*args, **kwargs):
+    async def login_required(*args, **kwargs):
         if "request" in kwargs:
             request = kwargs["request"]
             if len(authentication) == 0:
@@ -53,19 +61,21 @@ def check_auth(func):
                 if token in authentication:
                     request.state.allowed = authentication[token]
 
-        return func(*args, **kwargs)
+        return await func(*args, **kwargs)
 
     return login_required
 
 
 @app.get("/", response_model=schema.Response)
 def access_root():
+    '''Always return an error on index'''
     return build_error_response("Unknown request", 0x0202, "general error")
 
 
 @app.get("/info", response_model=schema.Response)
 @check_auth
 def info(request: fastapi.Request):
+    '''Return the available templates (respecting the given authentication)'''
     know_keys = []
     for key in available_templates:
         if "*" in request.state.allowed or key in request.state.allowed:
@@ -75,22 +85,11 @@ def info(request: fastapi.Request):
 
 @app.get("/update")
 def update_repo():
+    '''Refresh the repository'''
     repo.update()
     read_templates()
     return build_success_response("update triggered")
 
-
-@app.get("/status/{jobid}")
-@check_auth
-def status(request: fastapi.Request, jobid: str = fastapi.Path(...)):
-    job = q.fetch_job(jobid)
-    if job is None:
-        raise fastapi.HTTPException(status_code=404)
-    templatename = job.kwargs["template"]["name"]
-    if not ("*" in request.state.allowed or templatename in request.state.allowed):
-        raise fastapi.HTTPException(status_code=403)
-    resp = schema.StatusResult(finished=job.result is not None)
-    return build_success_response(resp)
 
 def get_job(jobid, request):
     job = q.fetch_job(jobid)
@@ -101,36 +100,65 @@ def get_job(jobid, request):
         raise fastapi.HTTPException(status_code=403)
     return job
 
-@app.get("/result/{jobid}")
+@app.get("/status/{jobid}")
 @check_auth
-def result(request: fastapi.Request, jobid: str = fastapi.Path(...)):
+async def status(request: fastapi.Request, jobid: str = fastapi.Path(...)):
+    '''Check the state of a triggered httypist job.'''
     job = get_job(jobid, request)
-    print(job.result)
     resp = schema.StatusResult(finished=job.result is not None)
     return build_success_response(resp)
 
+
+
+@app.get("/result/{jobid}")
+@check_auth
+async def result(request: fastapi.Request, jobid: str = fastapi.Path(...)):
+    '''Get the result information for a specific job.'''
+    job = get_job(jobid, request)
+    resp = schema.StatusResult(finished=job.result is not None)
+    return build_success_response(resp)
+
+
 @app.get("/result/{jobid}/log")
 @check_auth
-def resut_zip(request: fastapi.Request, jobid: str = fastapi.Path(...)):
+async def resut_zip(request: fastapi.Request, jobid: str = fastapi.Path(...)):
+    '''Get the log of a job.'''
     job = get_job(jobid, request)
-    return PlainTextResponse(job.result['log'])
+    return PlainTextResponse(job.result["log"])
+
 
 @app.get("/result/{jobid}/result.zip")
 @check_auth
-def resut_zip(request: fastapi.Request, jobid: str = fastapi.Path(...)):
+async def resut_zip(request: fastapi.Request, jobid: str = fastapi.Path(...)):
+    '''Get the result files of a job.'''
     job = get_job(jobid, request)
-    return FileResponse(job.result['result_folder'] / 'result.zip', media_type='application/octet-stream',filename='result.zip') 
+    return FileResponse(
+        job.result["result_folder"] / "result.zip",
+        media_type="application/octet-stream",
+        filename=f"result-{jobid}.zip",
+    )
+
+@app.get("/result/{jobid}/temp.zip")
+@check_auth
+async def temp_zip(request: fastapi.Request, jobid: str = fastapi.Path(...)):
+    '''Get the temporary files of a job.'''
+    job = get_job(jobid, request)
+    return FileResponse(
+        job.result["result_folder"] / "temp.zip",
+        media_type="application/octet-stream",
+        filename=f"temp-{jobid}.zip",
+    )
+
 
 @app.post("/process/{templatename}")
 @check_auth
-def process_template(
+async def process_template(
     request: fastapi.Request,
     templatename: str = fastapi.Path(...),
     data=fastapi.Body(...),
 ):
     if not ("*" in request.state.allowed or templatename in request.state.allowed):
         raise HTTPException(status_code=403)
-    read_templates()
     template = available_templates[templatename]
     logger.info(data)
     job = q.enqueue(processor.process_template, template=template, data=data)
@@ -142,23 +170,36 @@ def process_template(
     return build_success_response(resp)
 
 
+async def get_all_available_data(request):
+    try:
+        json = await request.json()
+    except:
+        json = None
+    body = await request.body()
+    return dict(
+        body=request.body,
+        json=json,
+        headers=request.headers,
+        query=request.query_params,
+        client=request.client.host,
+    )
+
 
 @app.post("/process")
 @check_auth
-def autoprocess(request: fastapi.Request, data=fastapi.Body(...)):
+async def autoprocess(request: fastapi.Request, data=fastapi.Body(...)):
     logger.info("autotemplate")
-    read_templates()
-    logger.info("json: {}".format(data))
+    logger.debug("body: {}".format(data))
     use_templates = []
     for name, template in available_templates.items():
-        logger.info(f"check process {name}")
+        logger.debug(f"check process {name}")
         if "selector" in template["config"]:
             for selector in template["config"]["selector"]:
                 use = (
                     processor.process_string(f"{{{{ {selector} }}}}", {"data": data})
                     == "True"
                 )
-                logger.info(f"check: {{{{ {selector} }}}} => {use}")
+                logger.debug(f"check: {{{{ {selector} }}}} => {use}")
                 if use:
                     if not (
                         "*" in request.state.allowed or name in request.state.allowed
@@ -224,6 +265,7 @@ def read_templates():
 
 
 update_repo()
+
 
 def main():
     raise NotImplementedError()
