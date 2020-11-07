@@ -14,7 +14,7 @@ COPY httypist /app/
 
 RUN  curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py \
       && python3.8 get-pip.py \
-      && pip install -r httypist/requirements \
+      && pip install -r httypist/requirements.txt \
       && pip install httypist
 
 CMD [ "python3", "-m", "httypist", "--worker"]
