@@ -29,7 +29,7 @@ RUN tlmgr update --self; \
     tlmgr update --all
 
 RUN   pip install -r requirements.txt \
-      && pip install httypist
+      && pip install .
 
 CMD [ "python3", "-m", "httypist", "--worker"]
 
