@@ -16,7 +16,7 @@ RUN apt-get update && apt-get install -y \
 VOLUME ["/app"]
 WORKDIR /app
 
-COPY httypist /app/
+COPY . /app/
 
 RUN tlmgr update --self; \
     tlmgr install \
