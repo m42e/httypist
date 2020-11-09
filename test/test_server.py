@@ -1,20 +1,24 @@
 import pytest
+import os
 import tempfile
 import io
 from httypist import server
+from fastapi.testclient import TestClient
+
+from httpx import AsyncClient
+
 
 
 @pytest.fixture
 def client():
-    server.app.config["TESTING"] = True
-
-    with server.app.test_client() as client:
-        yield client
+    return TestClient(server.app)
 
 
 @pytest.fixture
 def gitrepo():
     tempdir = tempfile.TemporaryDirectory()
+    os.environ["GIT_URL"] = tempdir.name
+    return tempdir
 
 
 def test__test():
@@ -23,32 +27,34 @@ def test__test():
 
 def test__index_no_get(client):
     r = client.get("/")
-    assert r.status_code == 405
+    assert r.status_code == 200
 
 
 def test__index_post_no_data(client):
     r = client.post("/")
-    assert r.status_code == 400
-    assert b"unable to determine" in r.data
+    assert r.status_code == 405
 
 
 def test__index_post_with_invalid_mainfile(client):
     r = client.post("/", data={"main": "test"})
-    assert r.status_code == 400
+    assert r.status_code == 405
 
 
-def test__index_post_with_valid_mainfile(client):
-    r = client.post(
-        "/",
-        data={
-            "main": "test.tex",
-            "test.tex": (
-                io.BytesIO(
-                    b"\\documentclass{scrartcl}\n\\begin{document}Hello World\\end{document}"
-                ),
-                "test.tex",
-            ),
-        },
-        content_type="multipart/form-data",
-    )
-    assert r.status_code != 400
+def test_info(client):
+    r = client.get("/info")
+    assert r.status_code == 401
+
+@pytest.mark.asyncio
+async def test_info_authenticated(gitrepo):
+    with open(os.path.join(gitrepo.name, 'config.yml'), 'w') as configfile:
+        configfile.write("""
+access:
+  -
+      token: "testkey"
+      templates: "*"
+                         """)
+    async with AsyncClient(app=server.app, base_url="http://test") as ac:
+        r = await ac.get("/update")
+        response = await ac.get("/info", headers={'Authorization': 'testkey'})
+    assert r.status_code == 200
+

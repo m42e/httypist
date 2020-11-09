@@ -9,6 +9,9 @@ setuptools.setup(
     version="0.1",
     packages=["httypist",],
     license="MIT",
-    install_requires=["flask", "pyyaml", "requests", "celery", "dulwich", ],
+    install_requires=["fastapi", "redis", "requests", "rq"],
+    extras_require={
+        'test':['httpx', 'pytest-asyncio'],
+    },
     long_description=open(os.path.join(root, "README.md")).read(),
 )

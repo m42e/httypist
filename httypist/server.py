@@ -17,6 +17,11 @@ import logging
 import pydantic
 import pydantic.generics
 
+try:
+    from yaml import CLoader as Loader
+except ImportError:
+    from yaml import Loader
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -74,7 +79,7 @@ def access_root():
 
 @app.get("/info", response_model=schema.Response)
 @check_auth
-def info(request: fastapi.Request):
+async def info(request: fastapi.Request):
     '''Return the available templates (respecting the given authentication)'''
     know_keys = []
     for key in available_templates:
@@ -229,7 +234,7 @@ def read_templates():
     base = pathlib.PosixPath("repo")
 
     try:
-        baseconfig = yaml.load(open(base / "config.yml"), Loader=yaml.CLoader)
+        baseconfig = yaml.load(open(base / "config.yml"), Loader=Loader)
     except FileNotFoundError:
         baseconfig = {}
 
@@ -258,7 +263,7 @@ def read_templates():
         template["config"] = copy.deepcopy(baseconfig)
         with contextlib.suppress(FileNotFoundError):
             template["config"].update(
-                yaml.load(open(path / "config.yml"), Loader=yaml.CLoader)
+                yaml.load(open(path / "config.yml"), Loader=Loader)
             )
             if "access" in template["config"]:
                 for e in template["config"]["access"]:
