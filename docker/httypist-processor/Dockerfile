@@ -1,16 +1,37 @@
-FROM python3.8
-
-ARG GITEA_TOKEN
+FROM texlive/texlive:latest
 
 RUN apt-get update && apt-get install -y \
       git \
       curl \
- && rm -rf /var/lib/apt/lists/*
+      pandoc \
+      python3.8 \
+      python3-pip \
+      python3-pygments \
+     && apt-get --purge remove -y .\*-doc$ \
+     && apt-get clean -y \
+     && apt-get autoremove \
+     && rm -rf /var/lib/apt/lists/*
 
-RUN  curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py && python3.8 get-pip.py && pip install git+https://$GITEA_TOKEN@gitea.d1v3.de/matthias/httypist
 
 VOLUME ["/app"]
 WORKDIR /app
 
-CMD [ "celery", "-A", "httypist.processor", "worker"]
+COPY . /app/
+
+RUN ls
+
+RUN tlmgr update --self; \
+    tlmgr install \
+		latexmk \
+		lipsum \
+		background \
+		everypage \
+		siunitx \
+		titlesec; \
+    tlmgr update --all
+
+RUN   pip install -r requirements.txt \
+      && pip install .
+
+CMD [ "python3", "-m", "httypist", "--worker"]
 
