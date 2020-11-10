@@ -177,7 +177,9 @@ async def process_template(
 ):
     '''This triggers the processing of a given template with the data provided in the request'''
     if not ("*" in request.state.allowed or templatename in request.state.allowed):
-        raise HTTPException(status_code=403)
+        raise fastapi.HTTPException(status_code=403)
+    if templatename not in available_templates:
+        raise fastapi.HTTPException(status_code=404)
     template = available_templates[templatename]
     alldata = await get_all_available_data(request)
     job = q.enqueue(processor.process_template, template=template, data=alldata)

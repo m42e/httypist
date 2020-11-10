@@ -1,4 +1,5 @@
 import pytest
+import shutil
 import os
 import tempfile
 import io
@@ -40,21 +41,24 @@ def test__index_post_with_invalid_mainfile(client):
     assert r.status_code == 405
 
 
-def test_info(client):
-    r = client.get("/info")
-    assert r.status_code == 401
+# def test_info(client):
+#     r = client.get("/info")
+#     assert r.status_code == 401
+# 
+# @pytest.mark.asyncio
+# async def test_info_authenticated(gitrepo):
+#     async with AsyncClient(app=server.app, base_url="http://test") as ac:
+#         r = await ac.get("/update")
+#         response = await ac.get("/info", headers={'Authorization': 'testkey'})
+#     assert r.status_code == 200
+# 
+# @pytest.mark.asyncio
+# async def test_test(gitrepo):
+#     async with AsyncClient(app=server.app, base_url="http://test") as ac:
+#         r = await ac.get("/update")
+#         r = await ac.post("/process/test", headers={'Authorization': 'testkey'}, data={'name':'matthias'})
+#     assert r.status_code == 200
+#     print(r.content)
 
-@pytest.mark.asyncio
-async def test_info_authenticated(gitrepo):
-    with open(os.path.join(gitrepo.name, 'config.yml'), 'w') as configfile:
-        configfile.write("""
-access:
-  -
-      token: "testkey"
-      templates: "*"
-                         """)
-    async with AsyncClient(app=server.app, base_url="http://test") as ac:
-        r = await ac.get("/update")
-        response = await ac.get("/info", headers={'Authorization': 'testkey'})
-    assert r.status_code == 200
+
 
